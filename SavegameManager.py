@@ -1,7 +1,28 @@
 import PySimpleGUI as sg
 import keyboard
-import vlc
 from SavegameHandlerClass import SavegameHandler
+import pygame
+import json
+
+
+my_theme = {
+    'BACKGROUND': '#282c34',
+    'TEXT': '#ffffff',
+    'INPUT': '#c7cbd1',
+    'TEXT_INPUT': '#282c34',
+    'SCROLL': '#c7cbd1',
+    'BUTTON': ('#282c34', '#ffffff'),
+    'PROGRESS': ('#01826B', '#D0D0D0'),
+    'BORDER': 1,
+    'SLIDER_DEPTH': 0,
+    'PROGRESS_DEPTH': 0,
+    'RELIEF': 'groove'  # add the relief element to the theme
+}
+with open('my_theme.json', 'w') as file:
+    json.dump(my_theme, file)
+
+sg.theme_add_new('my_theme', my_theme)
+sg.theme('my_theme')
 
 #hexvalues
 color_background_light = '#FFFFFF'
@@ -22,32 +43,19 @@ color_text = color_text_dark
 icon_path = 'res//images//SavegameManager.ico'
 textFont = ("Arial", 11)
 
-#audio_save = vlc.Media("res//audio//save.wav")
-#audio_load = vlc.Media("res//audio//load.wav")
-
 settings_volume = int(100)
 
-Instance = vlc.Instance()
+isRunning=False
 
-audio_save = Instance.media_player_new()
-audio_load = Instance.media_player_new()
+audio_save = "res//audio//save.wav"
+audio_load = "res//audio//load.wav"
 
-media_save = Instance.media_new("res//audio//save.wav")
-media_load = Instance.media_new("res//audio//load.wav")
 
-media_save.get_mrl()
-media_load.get_mrl()
+pygame.init()
 
-audio_save.set_media(media_save)
-audio_load.set_media(media_load)
-
-def play_audio(player):
-    global settings_volume
-    player.audio_set_volume(settings_volume)
-    player.stop()
-    player.play()
-    while player.get_state() != 6:
-        continue
+def play_audio(audio):
+    pygame.mixer.music.load(audio)
+    pygame.mixer.music.play()
 
 def on_press_f9(event):
     if not isRunning:
@@ -84,7 +92,7 @@ def selectbackup_callback():
     if folder_path:
         window["-OUTPUT-2"].update(f"{folder_path}")
 
-def dark_mode_toggle(toggle_value):
+def dark_mode_toggle(toggle_value, window_settings):
     global color_background
     global color_boxes
     global color_button
@@ -101,7 +109,7 @@ def dark_mode_toggle(toggle_value):
         color_button = color_button_light
         color_text = color_text_light
     
-    for element in window.element_list():
+    for element in window.element_list() + window_settings.element_list():
         if isinstance(element, sg.Button):
             element.update(button_color=(color_text, color_button))
         if isinstance(element, sg.Text):
@@ -116,11 +124,6 @@ def dark_mode_toggle(toggle_value):
 
     window.TKroot.configure(background=color_background)
     window.Refresh()
-    
-
-    
-    #window["-TOGGLE-"].update(True)
-    #popup_window("there is no white mode!")
 
 # Define the layout of your GUI window
 layout = [
@@ -136,7 +139,6 @@ layout = [
     [sg.Frame("", [
         [sg.Button("Start", key="-BUTTON-START", size=(10,1), font=textFont),
          sg.Button("Stop", key="-BUTTON-STOP", size=(10,1), disabled=True, font=textFont),
-         sg.Checkbox("Dark Mode", key="-TOGGLE-", size=(10,1), default=True, checkbox_color=color_boxes, background_color=color_button, enable_events=True, font=textFont, metadata=True),
          sg.Button("Settings", key="-BUTTON_SETTINGS-", size=(10,1), disabled=False, font=textFont)]
          
     ], border_width=1, relief="flat", background_color=color_boxes)]
@@ -150,7 +152,6 @@ def custom_print(*args, **kwargs):
     # Append the message to the output element
     window['-OUTPUT_CONSOLE-'].print(message, **kwargs)
 
-isRunning=False
 
 def popup_window(message):
     column_to_be_centered = [
@@ -171,7 +172,7 @@ sound = True
     
 
 # Create the window using the layout
-window = sg.Window("Savegame Manager", layout, background_color=color_background, finalize=True, button_color=(color_text, color_button))
+window = sg.Window("Savegame Manager", layout, background_color=color_background, finalize=True, button_color=(color_text, color_button), theme=my_theme)
 window.set_icon(icon_path)
 window.set_min_size((875, 175))
 
@@ -187,10 +188,11 @@ def open_settings_menu():
     layout_settings =   [
                             [sg.Checkbox("Sound", key="-SOUND-", size=(10,1), default=sound, checkbox_color=color_boxes, background_color=color_button, enable_events=True, font=textFont, metadata=True)],
                             [sg.Slider(range=(0, 100), orientation='horizontal', size=(20, 15), default_value=50, resolution=1, enable_events=True, key='-SLIDER-')],
+                            [sg.Checkbox("Dark Mode", key="-TOGGLE-", size=(10,1), default=True, checkbox_color=color_boxes, background_color=color_button, enable_events=True, font=textFont, metadata=True)],
                             [sg.Button('Submit'), sg.Button('Cancel')]
                         ]
                         
-    window_settings = sg.Window("Settings", layout_settings, background_color=color_boxes, button_color=(color_text, color_button), size=(350,100), finalize=True, keep_on_top=True, modal=True)
+    window_settings = sg.Window("Settings", layout_settings, background_color=color_boxes, button_color=(color_text, color_button), size=(350,200), finalize=True, keep_on_top=True, modal=True)
     window_settings.set_icon(icon_path)
 
     while True:
@@ -200,8 +202,12 @@ def open_settings_menu():
         if event == "-SOUND-":
              sound = values["-SOUND-"]
              print("sound checkbox pressed: " + str(sound))
+
         if event == '-SLIDER-':
             settings_volume = values["-SLIDER-"]
+        
+        if event == "-TOGGLE-":
+            dark_mode_toggle(values['-TOGGLE-'], window_settings)
 
         if event == sg.WINDOW_CLOSED or event == "Exit":
             break
@@ -227,8 +233,6 @@ while True:
     if event == sg.WINDOW_CLOSED or event == "Exit":
         break
 
-    if event == "-TOGGLE-":
-        dark_mode_toggle(values['-TOGGLE-'])
     # If the user clicks the button, call the button_callback function
     if event == "-BUTTON-":
         selectsavegame_callback()
