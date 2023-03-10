@@ -1,0 +1,1 @@
+{"copy_config": true, "sound_enabled": true, "_sound_volume": 100, "savegame_location": "", "backup_location": "", "theme": {"BACKGROUND": "#444444", "TEXT": "#ffffff", "INPUT": "#444444", "TEXT_INPUT": "#0000ff", "SCROLL": "#222222", "BUTTON": ["#ffffff", "#444444"], "PROGRESS": ["#0f0f0f", "#f0f0f0"], "BORDER": 1, "SLIDER_DEPTH": 0, "PROGRESS_DEPTH": 0, "RELIEF": "flat"}}

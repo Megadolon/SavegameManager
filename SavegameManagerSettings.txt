@@ -1,1 +1,0 @@
-{"copy_config": true, "sound_enabled": true, "_sound_volume": 80.0}

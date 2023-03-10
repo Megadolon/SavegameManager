@@ -3,27 +3,140 @@ import keyboard
 from SavegameHandlerClass import SavegameHandler
 import pygame
 import json
+from SettingsClass import Settings
 
-class manager:
+class Manager:
+    def __init__(self, settings):
+        self.settings = settings
+        self.handler = SavegameHandler()
+        self.handler.load_config(settings)
 
-    def __init__(self):
-        self.test = False
+        self.is_open = True
+        self.is_running=False
 
-class Settings:
-    settings_file = 'SavegameManagerSettings.txt'
+        self.set_theme(settings.theme)
+        icon_path = 'res//images//SavegameManager.ico'
 
-    def __init__(self):
-        self.copy_config = False
-        self.sound_enabled = False
-        self.sound_volume: int = 0
+        sg.set_global_icon(icon_path)
 
-    @property
-    def sound_volume(self):
-        return self._sound_volume
+        savegame_path = 'no path'
+        backup_path = 'no path'
+        valid, error = self.handler.config_valid()
+        if valid:
+            savegame_path = self.handler.src_path
+            backup_path = self.handler.dest_path
 
-    @sound_volume.setter
-    def sound_volume(self, value):
-        self._sound_volume = max(0, min(value, 100))
+        tab1_manager_layout = [
+            [sg.Frame('Savegame Location', [
+                [sg.Button('Select folder', key='-BUTTON-SELECT_SAVEGAME_FOLDER', size=(10,1)),
+                 sg.Text(savegame_path, size=(80,1),  key='-OUTPUT-SAVEGAME_FOLDER')]
+            ], border_width=1)],
+            [sg.Frame('Backup Location', [
+                [sg.Button('Select folder', key='-BUTTON-SELECT_BACKUP_FOLDER', size=(10,1)),
+                 sg.Text(backup_path, size=(80,1), key='-OUTPUT-BACKUP_FOLDER')]
+            ], border_width=1)],
+            [sg.Frame('', [
+                [sg.Button('Start', key='-BUTTON-START', size=(10,1)),
+                 sg.Button('Stop', key='-BUTTON-STOP', size=(10,1), disabled=True)
+                ]
+            ], border_width=1)]
+        ]
+
+
+
+        tab2_settings_layout =[
+                        [sg.Checkbox('Sound', key='-TOGGLE-SOUND_ENABLED', size=(10,1), default=settings.sound_enabled, enable_events=True, metadata=True)],
+                        [sg.Slider(range=(0, 100), orientation='horizontal', size=(20, 15), default_value=settings.sound_volume, resolution=1, enable_events=True, key='-SLIDER-')],
+                        [sg.Checkbox('Copy Config', key='-TOGGLE-COPY_CONFIG', size=(10,1), default=True, enable_events=True, metadata=True)]
+                    ]
+
+        tabgroup_layout = [
+            [sg.TabGroup([
+                [sg.Tab('Manager', tab1_manager_layout, background_color='#888888')],
+                [sg.Tab('Settings', tab2_settings_layout, background_color='#888888')]
+            ])]
+        ]
+
+        self.window = sg.Window('Savegame Manager', tabgroup_layout, finalize=True)
+        self.window.set_min_size((875, 175))
+        self.window.TKroot.configure(relief='flat')
+        
+
+    
+    def __del__(self):
+        self.window.close()
+    
+    def set_theme(self, theme):
+        textFont = ('Arial', 5)
+
+        sg.theme
+        
+        sg.theme_add_new('my_theme', theme)
+        sg.theme('my_theme')
+
+    def select_folder_callback(self, input_field, folder_type):
+        folder_path = sg.popup_get_folder('Select a ' + folder_type + ' folder', default_path=self.window[input_field].get(), size=(80, 1))
+
+        if folder_path:
+            self.window[input_field].update(f'{folder_path}')
+
+    def run(self, value: bool):
+        self.window['-BUTTON-SELECT_SAVEGAME_FOLDER'].update(disabled=value)
+        self.window['-BUTTON-SELECT_BACKUP_FOLDER'].update(disabled=value)
+        self.window['-BUTTON-STOP'].update(disabled=not value)
+        self.window['-BUTTON-START'].update(disabled=value)
+
+        self.is_running = value
+
+    def update(self):
+        event, values = self.window.read()
+
+        # If the user closes the window or clicks the Exit button, exit the event loop
+        if event == sg.WINDOW_CLOSED or event == 'Exit':
+            self.is_open = False
+
+        # If the user clicks the button, call the button_callback function
+        if event == '-BUTTON-SELECT_SAVEGAME_FOLDER':
+            self.select_folder_callback('-OUTPUT-SAVEGAME_FOLDER', 'Savegame')
+
+        if event == '-BUTTON-SELECT_BACKUP_FOLDER':
+            self.select_folder_callback('-OUTPUT-BACKUP_FOLDER', 'Backup')
+
+        if event == '-BUTTON-START':
+            self.handler.set_config(self.window['-OUTPUT-SAVEGAME_FOLDER'].get(), self.window['-OUTPUT-BACKUP_FOLDER'].get())
+            is_valid, error_msg = self.handler.config_valid()
+            if is_valid:
+                self.run(True)
+            else:
+                popup_window(error_msg)
+
+        if event == '-BUTTON-STOP':
+            self.run(False)
+
+        if event == '-TOGGLE-SOUND_ENABLED':
+            self.settings.sound_enabled = values['-TOGGLE-SOUND_ENABLED']
+
+        if event == '-SLIDER-':
+            self.settings.sound_volume = values['-SLIDER-']
+
+        if event == '-TOGGLE-COPY_CONFIG':
+            self.settings.copy_config = values['-TOGGLE-COPY_CONFIG']
+
+    def on_press_f9(self, event):
+        if not self.is_running:
+            return
+        if event.name == 'f9':
+            self.handler.load_data()
+            if self.settings.sound_enabled:
+                play_audio(audio_load)
+
+    def on_press_f5(self, event):
+        if not self.is_running:
+            return
+        if event.name == 'f5':
+            self.handler.save_data()
+            if self.settings.sound_enabled:
+                play_audio(audio_save)
 
 def write_settings_to_file(settings):
     with open(settings.settings_file, 'w') as f:
@@ -45,29 +158,7 @@ def play_audio(audio):
     pygame.mixer.music.load(audio)
     pygame.mixer.music.play()
 
-def on_press_f9(event):
-    if not isRunning:
-        return
-    if event.name == 'f9':
-        global handler
-        handler.load_data()
-        if sound:
-            play_audio(audio_load)
 
-def on_press_f5(event):
-    if not isRunning:
-        return
-    if event.name == 'f5':
-        global handler
-        handler.save_data()
-        if sound:
-            play_audio(audio_save)
-
-def select_folder_callback(input_field):
-    folder_path = sg.popup_get_folder('Select a backup folder', default_path=window[input_field].get(), size=(80, 1))
-
-    if folder_path:
-        window[input_field].update(f'{folder_path}')
 
 def popup_window(message):
     column_to_be_centered = [
@@ -83,151 +174,35 @@ def popup_window(message):
     windowConfigValid = sg.Window(message, layoutConfigValid, size=(350,100), finalize=True, keep_on_top=True, modal=True)
     event, values = windowConfigValid.read(close=True)
 
-settings = read_settings_from_file()
-
-
-icon_path = 'res//images//SavegameManager.ico'
-textFont = ('Arial', 5)
-
-my_theme = {
-    'BACKGROUND': '#222222',
-    'TEXT': '#ffff00',
-    'INPUT': '#fff0f0',
-    'TEXT_INPUT': '#0000ff',
-    'SCROLL': '#00ff00',
-    'BUTTON': ('#ff0000', '#00ffff'),
-    'PROGRESS': ('#0f0f0f', '#f0f0f0'),
-    'BORDER': 10,
-    'SLIDER_DEPTH': 0,
-    'PROGRESS_DEPTH': 0,
-    #'RELIEF': sg.RELIEF_FLAT,
-    #'FONT': textFont,
-    #'icon': 'res//images//SavegameManager.ico'
-}
-sg.theme
-
-sg.theme_add_new('my_theme', my_theme)
-sg.theme('my_theme')
-sg.set_global_icon(icon_path)
-
-settings_volume = int(100)
-
-isRunning=False
-
 audio_save = 'res//audio//save.wav'
 audio_load = 'res//audio//load.wav'
 
-pygame.init()
-
-
-# Define the layout of your GUI window
-# Define the layout for the first tab
-tab1_manager_layout = [
-    [sg.Frame('Savegame Location', [
-        [sg.Button('Select folder', key='-BUTTON-SELECT_SAVEGAME_FOLDER', size=(10,1)),
-         sg.Text('no path', size=(80,1),  key='-OUTPUT-SAVEGAME_FOLDER')]
-    ], border_width=1)],
-    [sg.Frame('Backup Location', [
-        [sg.Button('Select folder', key='-BUTTON-SELECT_BACKUP_FOLDER', size=(10,1)),
-         sg.Text('no path', size=(80,1), key='-OUTPUT-BACKUP_FOLDER')]
-    ], border_width=1)],
-    [sg.Frame('', [
-        [sg.Button('Start', key='-BUTTON-START', size=(10,1)),
-         sg.Button('Stop', key='-BUTTON-STOP', size=(10,1), disabled=True)
-        ]
-    ], border_width=1)]
-]
-
-# Define the layout for the second tab
-tab2_settings_layout =[
-                [sg.Checkbox('Sound', key='-SOUND-', size=(10,1), default=settings.sound_enabled, enable_events=True, metadata=True)],
-                [sg.Slider(range=(0, 100), orientation='horizontal', size=(20, 15), default_value=settings.sound_volume, resolution=1, enable_events=True, key='-SLIDER-')],
-                [sg.Checkbox('Dark Mode', key='-TOGGLE-', size=(10,1), default=True, enable_events=True, metadata=True)]
-            ]
-
-# Define the TabGroup with two tabs
-tabgroup_layout = [
-    [sg.TabGroup([
-        [sg.Tab('Manager', tab1_manager_layout)],
-        [sg.Tab('Settings', tab2_settings_layout)]
-    ])]
-]
-
-
-sound = True
-dark_mode = True
-
-# Create the window using the layout
-window = sg.Window('Savegame Manager', tabgroup_layout, finalize=True)
-window.set_min_size((875, 175))
-
-handler = SavegameHandler()
-handler.load_config()
-
-write_settings =True
-
-if not handler.config_valid():
-    popup_window('invalid paths')
-else:
-    window['-OUTPUT-SAVEGAME_FOLDER'].update(handler.src_path)
-    window['-OUTPUT-BACKUP_FOLDER'].update(handler.dest_path)
-
-def run(value: bool):
-    window['-BUTTON-SELECT_SAVEGAME_FOLDER'].update(disabled=value)
-    window['-BUTTON-SELECT_BACKUP_FOLDER'].update(disabled=value)
-    window['-BUTTON-STOP'].update(disabled=not value)
-    window['-BUTTON-START'].update(disabled=value)
-
-
-keyboard.on_release(on_press_f5)
-keyboard.on_release(on_press_f9)
-# Start the event loop to process events and wait for user interaction
-while True:
-
-    event, values = window.read()
-
-    # If the user closes the window or clicks the Exit button, exit the event loop
-    if event == sg.WINDOW_CLOSED or event == 'Exit':
-        break
-
-    # If the user clicks the button, call the button_callback function
-    if event == '-BUTTON-SELECT_SAVEGAME_FOLDER':
-        select_folder_callback('-OUTPUT-SAVEGAME_FOLDER')
-
-    if event == '-BUTTON-SELECT_BACKUP_FOLDER':
-        select_folder_callback('-OUTPUT-BACKUP_FOLDER')
-
-    if event == '-BUTTON-START':
-        handler.set_config(window['-OUTPUT-'].get(), window['-OUTPUT-2'].get())
-        is_valid, error_msg = handler.config_valid()
-        if is_valid:
-            run(True)
-            isRunning = True
-        else:
-            popup_window(error_msg)
+def main():
+    settings = Settings()
+    #settings = read_settings_from_file()
+    print(settings.savegame_location)
+    print(settings.backup_location)
+    manager = Manager(settings)
     
-    if event == '-BUTTON-STOP':
-        run(False)
-        isRunning=False
-    
-    if event == '-SOUND-':
-        settings.sound_enabled = values['-SOUND-']
 
-    if event == '-SLIDER-':
-        settings.sound_volume = values['-SLIDER-']
-        
-    if event == '-TOGGLE-':
-        dark_mode = values['-TOGGLE-']
+    pygame.init()
 
-    if event == sg.WINDOW_CLOSED or event == 'Exit':
-        break
+    keyboard.on_release(manager.on_press_f5)
+    keyboard.on_release(manager.on_press_f9)
+    # Start the event loop to process events and wait for user interaction
+    while manager.is_open:
 
+        manager.update()
 
-# Close the window and exit the program
-is_valid, error_msg = handler.config_valid()
-if is_valid:
-    handler.save_config()
+    if manager.handler.config_valid():
+        settings.savegame_location = manager.handler.src_path
+        settings.backup_location = manager.handler.dest_path
 
-write_settings_to_file(settings)
-    
-window.close()
+    print(settings.savegame_location)
+    print(settings.backup_location)
+
+    write_settings_to_file(settings)
+
+if __name__ == "__main__":
+    main()
+

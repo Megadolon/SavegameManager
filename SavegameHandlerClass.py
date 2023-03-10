@@ -1,8 +1,8 @@
 import shutil
 import os
+from SettingsClass import Settings
 
 class SavegameHandler:
-    config_file = 'SavegameManagerConfig.txt'
 
     def __init__(self):
         self.src_path = None
@@ -13,14 +13,9 @@ class SavegameHandler:
         self.src_path = _src_path
         self.dest_path = _dest_path
 
-    def load_config(self):
-        if os.path.exists(SavegameHandler.config_file):
-            with open(SavegameHandler.config_file, 'r') as f:
-                    self.src_path, self.dest_path = f.read().strip().split('\n')
-
-    def save_config(self):
-        with open(SavegameHandler.config_file, "w") as f:
-            f.write("\n".join([self.src_path, self.dest_path]))
+    def load_config(self, settings):
+        self.src_path = settings.savegame_location
+        self.dest_path = settings.backup_location
 
     def has_sl2_file(self, folder_path):
         for dirpath, dirnames, filenames in os.walk(folder_path):
