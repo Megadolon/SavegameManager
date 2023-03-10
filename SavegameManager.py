@@ -4,6 +4,11 @@ from SavegameHandlerClass import SavegameHandler
 import pygame
 import json
 
+class manager:
+
+    def __init__(self):
+        self.test = False
+
 class Settings:
     settings_file = 'SavegameManagerSettings.txt'
 
