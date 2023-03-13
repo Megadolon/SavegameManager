@@ -19,18 +19,18 @@ class Settings:
     def __init__(self):
         self.copy_config = True
         self.sound_enabled = True
-        self.sound_volume: int = 100
+        self.sound_volume: float = 1
         self.savegame_location = ''
         self.backup_location = ''
         self.theme = {
-            'BACKGROUND': '#444444',
+            'BACKGROUND': '#ffffff',
             'TEXT': '#ffffff',
-            'INPUT': '#444444',
-            'TEXT_INPUT': '#0000ff',
+            'INPUT': '#222222',
+            'TEXT_INPUT': '#ffffff',
             'SCROLL': '#222222',
-            'BUTTON': ('#ffffff', '#444444'),
-            'PROGRESS': ('#0f0f0f', '#f0f0f0'),
-            'BORDER': 1,
+            'BUTTON': ('#ffffff', '#666666'),
+            'PROGRESS': ('#ff0000', '#00ff00'),
+            'BORDER': 0,
             'SLIDER_DEPTH': 0,
             'PROGRESS_DEPTH': 0,
             'RELIEF': 'flat'
@@ -44,4 +44,4 @@ class Settings:
 
     @sound_volume.setter
     def sound_volume(self, value):
-        self._sound_volume = max(0, min(value, 100))
+        self._sound_volume = max(0, min(value, 1))

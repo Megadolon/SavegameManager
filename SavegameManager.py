@@ -4,7 +4,6 @@ from SavegameHandlerClass import SavegameHandler
 import pygame
 import json
 from SettingsClass import Settings
-
 class Manager:
     def __init__(self, settings):
         self.settings = settings
@@ -25,41 +24,46 @@ class Manager:
         if valid:
             savegame_path = self.handler.src_path
             backup_path = self.handler.dest_path
+        else:
+            popup_window(error)
+
+        _relief = 'flat'
 
         tab1_manager_layout = [
             [sg.Frame('Savegame Location', [
                 [sg.Button('Select folder', key='-BUTTON-SELECT_SAVEGAME_FOLDER', size=(10,1)),
-                 sg.Text(savegame_path, size=(80,1),  key='-OUTPUT-SAVEGAME_FOLDER')]
-            ], border_width=1)],
+                 sg.Text(savegame_path, size=(80,1), relief=_relief,  key='-OUTPUT-SAVEGAME_FOLDER')]
+            ], relief=_relief)],
             [sg.Frame('Backup Location', [
                 [sg.Button('Select folder', key='-BUTTON-SELECT_BACKUP_FOLDER', size=(10,1)),
-                 sg.Text(backup_path, size=(80,1), key='-OUTPUT-BACKUP_FOLDER')]
-            ], border_width=1)],
+                 sg.Text(backup_path, size=(80,1), relief=_relief, key='-OUTPUT-BACKUP_FOLDER')]
+            ], relief=_relief)],
             [sg.Frame('', [
                 [sg.Button('Start', key='-BUTTON-START', size=(10,1)),
                  sg.Button('Stop', key='-BUTTON-STOP', size=(10,1), disabled=True)
                 ]
-            ], border_width=1)]
+            ], relief=_relief)]
         ]
 
 
 
         tab2_settings_layout =[
                         [sg.Checkbox('Sound', key='-TOGGLE-SOUND_ENABLED', size=(10,1), default=settings.sound_enabled, enable_events=True, metadata=True)],
-                        [sg.Slider(range=(0, 100), orientation='horizontal', size=(20, 15), default_value=settings.sound_volume, resolution=1, enable_events=True, key='-SLIDER-')],
+                        [sg.Slider(range=(0, 1), orientation='horizontal', size=(20, 15), default_value=settings.sound_volume, resolution=0.01, enable_events=True, key='-SLIDER-')],
                         [sg.Checkbox('Copy Config', key='-TOGGLE-COPY_CONFIG', size=(10,1), default=True, enable_events=True, metadata=True)]
                     ]
 
         tabgroup_layout = [
             [sg.TabGroup([
-                [sg.Tab('Manager', tab1_manager_layout, background_color='#888888')],
-                [sg.Tab('Settings', tab2_settings_layout, background_color='#888888')]
-            ])]
+                [sg.Tab('Manager', tab1_manager_layout, background_color='#888888', title_color='#ff0000')],
+                [sg.Tab('Settings', tab2_settings_layout, background_color='#888888', title_color='#ff0000')]
+            ], selected_background_color='#888888', selected_title_color='#ffffff')]
         ]
 
         self.window = sg.Window('Savegame Manager', tabgroup_layout, finalize=True)
         self.window.set_min_size((875, 175))
-        self.window.TKroot.configure(relief='flat')
+        self.run(False)
+        #self.window.TKroot.configure()
         
 
     
@@ -81,10 +85,17 @@ class Manager:
             self.window[input_field].update(f'{folder_path}')
 
     def run(self, value: bool):
+        enabled=('white', '#666666')
+        disabled=('white', '#AAAAAA')
+
         self.window['-BUTTON-SELECT_SAVEGAME_FOLDER'].update(disabled=value)
+        self.window['-BUTTON-SELECT_SAVEGAME_FOLDER'].update(button_color=enabled if value else disabled)
         self.window['-BUTTON-SELECT_BACKUP_FOLDER'].update(disabled=value)
+        self.window['-BUTTON-SELECT_BACKUP_FOLDER'].update(button_color=enabled if value else disabled)
         self.window['-BUTTON-STOP'].update(disabled=not value)
+        self.window['-BUTTON-STOP'].update(button_color=enabled if not value else disabled)
         self.window['-BUTTON-START'].update(disabled=value)
+        self.window['-BUTTON-START'].update(button_color=enabled if value else disabled)
 
         self.is_running = value
 
@@ -128,7 +139,7 @@ class Manager:
         if event.name == 'f9':
             self.handler.load_data()
             if self.settings.sound_enabled:
-                play_audio(audio_load)
+                play_audio(audio_load, self.settings.sound_volume)
 
     def on_press_f5(self, event):
         if not self.is_running:
@@ -136,7 +147,7 @@ class Manager:
         if event.name == 'f5':
             self.handler.save_data()
             if self.settings.sound_enabled:
-                play_audio(audio_save)
+                play_audio(audio_save, self.settings.sound_volume)
 
 def write_settings_to_file(settings):
     with open(settings.settings_file, 'w') as f:
@@ -154,7 +165,8 @@ def read_settings_from_file():
     except FileNotFoundError:
         return Settings()
     
-def play_audio(audio):
+def play_audio(audio, volume):
+    pygame.mixer.music.set_volume(volume)
     pygame.mixer.music.load(audio)
     pygame.mixer.music.play()
 
@@ -178,8 +190,8 @@ audio_save = 'res//audio//save.wav'
 audio_load = 'res//audio//load.wav'
 
 def main():
-    settings = Settings()
-    #settings = read_settings_from_file()
+    #settings = Settings()
+    settings = read_settings_from_file()
     print(settings.savegame_location)
     print(settings.backup_location)
     manager = Manager(settings)

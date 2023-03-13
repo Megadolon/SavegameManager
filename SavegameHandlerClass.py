@@ -8,6 +8,10 @@ class SavegameHandler:
         self.src_path = None
         self.dest_path = None
         self.last_saves = []
+        self.copy_config_enabled = True
+
+    def enable_config_copy(self, value: bool):
+        self.copy_config_enabled = value
     
     def set_config(self, _src_path, _dest_path):
         self.src_path = _src_path
